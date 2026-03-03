@@ -7,4 +7,10 @@ if (CC_HAS_WNO_IMPLICIT_FALLTHROUGH)
     set_source_files_properties(uri_parser.c PROPERTIES COMPILE_FLAGS
         -Wno-implicit-fallthrough)
 endif()
+
+STRING(REGEX MATCH "-DNDEBUG" has_ndebug ${CMAKE_C_FLAGS})
+IF(${has_ndebug} MATCHES "-DNDEBUG")
 add_library(uri STATIC uri.c uri_parser.c)
+ELSE()
+add_library(uri STATIC uri.c uri_parser.c ../core/util_fmt.c)
+ENDIF()

@@ -563,6 +563,17 @@ replica_delete(struct replica *replica)
 	free(replica);
 }
 
+#ifndef NDEBUG
+const char *
+fmt_replica(const struct replica *x)
+{
+	if (x == NULL)
+		return "replica(null)";
+
+	return fmt("replica(%p .name:%s)", x, x->name);
+}
+#endif
+
 struct replica *
 replicaset_add(uint32_t replica_id, const struct tt_uuid *replica_uuid)
 {
@@ -1077,8 +1088,10 @@ next:
 			 * Try not to interrupt working appliers upon
 			 * reconfiguration.
 			 */
+			say_dbg("preserve old %s with working %s", fmt_replica(replica), fmt_applier(replica->applier));
 			replicaset.applier.connected++;
 			replicaset.applier.synced++;
+			say_dbg("remove new %s with %s", fmt_replica(other), fmt_applier(other->applier));
 			replica_hash_remove(&uniq, other);
 			applier = other->applier;
 			replica_clear_applier(other);
@@ -1088,6 +1101,7 @@ next:
 			replica_clear_applier(replica);
 			replica->applier_sync_state = APPLIER_DISCONNECTED;
 		}
+		say_dbg("add for delete %s", fmt_applier(applier));
 		appliers_for_delete[appliers_for_delete_count++] = applier;
 	}
 
@@ -1109,12 +1123,15 @@ next:
 		struct replica *orig = replica_hash_search(&replicaset.hash,
 							   replica);
 		if (orig != NULL) {
+			assert(orig->applier == NULL);
+			say_dbg("find orig %s, set %s %s", fmt_replica(orig), fmt_replica(replica), fmt_applier(replica->applier));
 			/* Use existing struct replica */
 			replica_set_applier(orig, replica->applier);
 			replica_clear_applier(replica);
 			replica_delete(replica);
 			replica = orig;
 		} else {
+			say_dbg("add new %s %s", fmt_replica(replica), fmt_applier(replica->applier));
 			/* Add a new struct replica */
 			replica_hash_insert(&replicaset.hash, replica);
 			replicaset.anon_count += replica->anon;
@@ -1127,6 +1144,7 @@ next:
 
 	assert(replica_hash_first(&uniq) == NULL);
 	replica_hash_foreach_safe(&replicaset.hash, replica, next) {
+		say_dbg("check orphan:%u for %s %s", replica_is_orphan(replica), fmt_replica(replica), fmt_applier(replica->applier));
 		if (replica_is_orphan(replica)) {
 			replica_hash_remove(&replicaset.hash, replica);
 			replicaset.anon_count -= replica->anon;
@@ -1302,6 +1320,7 @@ replicaset_connect(const struct uri_set *uris,
 	struct replicaset_connect_state state;
 	memset(&state, 0, sizeof(state));
 	fiber_cond_create(&state.wakeup);
+	say_dbg("demand_quorum:%d keep_connect:%d wait_all:%d", demand_quorum, keep_connect, wait_all);
 
 	/*
 	 * Return immediately if there are no configured

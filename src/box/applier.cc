@@ -77,6 +77,7 @@ enum {
 static inline void
 applier_set_state(struct applier *applier, enum applier_state state)
 {
+	say_dbg("%s => %s", applier_state_strs[state] + strlen("APPLIER_"), fmt_applier(applier));
 	applier->state = state;
 	say_debug("=> %s", applier_state_strs[state] +
 		  strlen("APPLIER_"));
@@ -765,6 +766,7 @@ applier_connect(struct applier *applier)
 		xrow_decode_error_xc(&row); /* auth failed */
 
 	/* auth succeeded */
+	say_dbg("authenticated %s", fmt_applier(applier));
 	say_info("authenticated");
 	applier_set_state(applier, APPLIER_READY);
 }
@@ -2834,6 +2836,7 @@ applier_new(const struct uri *uri)
 	fiber_cond_create(&applier->resume_cond);
 	diag_create(&applier->diag);
 
+	say_dbg("%s", fmt_applier(applier));
 	return applier;
 }
 
@@ -2976,3 +2979,15 @@ applier_uri_str(const struct applier *applier)
 	uri_format(uri, APPLIER_SOURCE_MAXLEN, &applier->uri, false);
 	return uri;
 }
+
+#ifndef NDEBUG
+const char *
+fmt_applier(const struct applier *x)
+{
+	if (x == NULL)
+		return "applier(null)";
+	return fmt("applier(%p .state:%s .uri:%s)", x,
+		applier_state_strs[x->state] + strlen("APPLIER_"),
+		fmt_uri(&x->uri));
+}
+#endif

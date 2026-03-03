@@ -459,6 +459,12 @@ _say_strerror(int errnum);
 				      format, ##__VA_ARGS__)
 /** \endcond public */
 
+#ifndef NDEBUG
+#define say_dbg(format, ...) say(S_INFO, NULL, "DEBUG(%s): " format, __func__, ##__VA_ARGS__)
+#else
+#define say_dbg(format, ...)
+#endif
+
 #define panic_status(status, ...) ({\
 	say(S_FATAL, NULL, __VA_ARGS__); \
 	lsan_turn_off(); \

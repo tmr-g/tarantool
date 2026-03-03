@@ -187,6 +187,11 @@ uri_is_equal(const struct uri *a, const struct uri *b);
 bool
 uri_is_nil(const struct uri *uri);
 
+#ifndef NDEBUG
+const char *
+fmt_uri(const struct uri *x);
+#endif
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */

@@ -512,6 +512,11 @@ enum {
 	REPLICA_ID_NIL = 0,
 };
 
+#ifndef NDEBUG
+const char *
+fmt_replica(const struct replica *x);
+#endif
+
 /**
  * Find a replica by UUID
  */

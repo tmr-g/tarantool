@@ -2312,6 +2312,7 @@ box_sync_replication(bool demand_quorum, bool keep_connect, bool wait_all)
 	auto uri_set_guard = make_scoped_guard([&]{
 		uri_set_destroy(&uri_set);
 	});
+	say_dbg("demand_quorum:%u keep_connect:%u wait_all:%u", demand_quorum, keep_connect, wait_all);
 	replicaset_connect(&uri_set, demand_quorum, keep_connect, wait_all);
 }
 
@@ -2321,6 +2322,7 @@ box_restart_replication(void)
 	const bool demand_quorum = true;
 	const bool keep_connect = false;
 	const bool wait_all = true;
+	say_dbg("demand_quorum:%u keep_connect:%u wait_all:%u", demand_quorum, keep_connect, wait_all);
 	box_sync_replication(demand_quorum, keep_connect, wait_all);
 }
 
@@ -2336,7 +2338,9 @@ box_update_replication(void)
 	const bool demand_quorum =
 		bootstrap_strategy != BOOTSTRAP_STRATEGY_LEGACY;
 	const bool keep_connect = true;
+	// const bool keep_connect = false;
 	const bool wait_all = bootstrap_strategy != BOOTSTRAP_STRATEGY_LEGACY;
+	say_dbg("demand_quorum:%u keep_connect:%u wait_all:%u", demand_quorum, keep_connect, wait_all);
 	box_sync_replication(demand_quorum, keep_connect, wait_all);
 }
 
@@ -2355,6 +2359,7 @@ box_set_replication(void)
 	if (box_check_replication(&uri_set) != 0)
 		diag_raise();
 	bool unchanged = uri_set_is_equal(&uri_set, &replication_uris);
+	say_dbg("unchanged:%d", unchanged);
 	uri_set_destroy(&uri_set);
 	if (unchanged) {
 		/*

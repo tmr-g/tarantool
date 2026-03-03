@@ -565,3 +565,16 @@ uri_is_nil(const struct uri *uri)
 	 */
 	return uri->host == NULL && uri->path == NULL && uri->service == NULL;
 }
+
+#ifndef NDEBUG
+const char *
+fmt_uri(const struct uri *x)
+{
+	if (x == NULL)
+		return "uri(null)";
+
+	static char buf[1024];
+	uri_format(buf, sizeof(buf), x, true);
+	return fmt("uri(%s)", buf);
+}
+#endif /* !NDEBUG */

@@ -367,6 +367,11 @@ applier_wait_bootstrap_leader_uuid_is_set(struct applier *applier);
 const char *
 applier_uri_str(const struct applier *applier);
 
+#ifndef NDEBUG
+const char *
+fmt_applier(const struct applier *x);
+#endif
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */
