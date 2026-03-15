@@ -76,6 +76,9 @@ void tzfree(timezone_t);
 struct tnt_tm *
 tnt_localtime_rz(struct state *sp, time_t const *timep, struct tnt_tm *tmp);
 
+const char *
+fmt_tnt_tm(struct tnt_tm *x);
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */

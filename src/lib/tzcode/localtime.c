@@ -92,6 +92,20 @@ struct ttinfo { /* time type information */
 	bool tt_ttisut; /* transition is UT */
 };
 
+const char *
+fmt_ttinfo(const struct ttinfo *x)
+{
+	if (x == NULL)
+		return "ttinfo(null)";
+
+	static char buf[1024];
+	snprintf(buf, sizeof(buf),
+		"ttinfo(x:%p tt_utoff:%ld tt_isdst:%u tt_desigidx:%d tt_ttisstd:%u tt_ttisut:%u)",
+		x, x->tt_utoff, x->tt_isdst, x->tt_desigidx, x->tt_ttisstd, x->tt_ttisut
+	);
+	return buf;
+}
+
 struct lsinfo { /* leap second information */
 	time_t ls_trans; /* transition time */
 	int_fast32_t ls_corr; /* correction to apply */
@@ -389,6 +403,7 @@ tzloadbody(char const *name, struct state *sp, bool doextend,
 	if (doaccess && access(name, R_OK) != 0)
 		return errno;
 	fid = open(name, OPEN_MODE);
+	printf("DEBUG: %s: open('%s') -> fid:%d\n", __func__, name, fid);
 	if (fid < 0)
 		return errno;
 
@@ -729,6 +744,7 @@ static int
 tzload(char const *name, struct state *sp, bool doextend)
 {
 #ifdef ALL_STATE
+	printf("DEBUG: %s (1): name:'%s', doextend:%u\n", __func__, name, doextend);
 	union local_storage *lsp = malloc(sizeof *lsp);
 	if (!lsp) {
 		return HAVE_MALLOC_ERRNO ? errno : ENOMEM;
@@ -738,6 +754,7 @@ tzload(char const *name, struct state *sp, bool doextend)
 		return err;
 	}
 #else
+	printf("DEBUG: %s (2): name:'%s', doextend:%u\n", __func__, name, doextend);
 	union local_storage ls;
 	return tzloadbody(name, sp, doextend, &ls);
 #endif
@@ -1347,6 +1364,7 @@ tzparse(const char *name, struct state *sp, struct state *basep)
 static int
 zoneinit(struct state *sp, char const *name)
 {
+	printf("DEBUG %s: (IN) sp=%p name=%s\n", __func__, sp, name);
 	if (name && !name[0]) {
 		/*
 		** User wants it fast rather than right.
@@ -1359,14 +1377,17 @@ zoneinit(struct state *sp, char const *name)
 		init_ttinfo(&sp->ttis[0], 0, false, 0);
 		strlcpy(sp->chars, gmt, sizeof sp->chars);
 		sp->defaulttype = 0;
+		printf("DEBUG %s: (1)\n", __func__);
 		return 0;
 	} else {
 		int err = tzload(name, sp, true);
+		printf("%s: err=%d\n", __func__, err);
 		if (err != 0 && name && name[0] != ':' &&
 		    tzparse(name, sp, NULL))
 			err = 0;
 		if (err == 0)
 			scrub_abbrs(sp);
+		printf("DEBUG %s: (2) err=%d\n", __func__, err);
 		return err;
 	}
 }
@@ -1376,16 +1397,19 @@ zoneinit(struct state *sp, char const *name)
 timezone_t
 tzalloc(char const *name)
 {
+	printf("DEBUG %s: (IN) name=%s\n", __func__, name);
 	timezone_t sp = malloc(sizeof *sp);
 	if (sp) {
 		int err = zoneinit(sp, name);
 		if (err != 0) {
 			free(sp);
 			errno = err;
+			printf("DEBUG %s: (1) errno=%d\n", __func__, errno);
 			return NULL;
 		}
 	} else if (!HAVE_MALLOC_ERRNO)
 		errno = ENOMEM;
+	printf("DEBUG %s: (OUT) sp=%p errno=%d\n", __func__, sp, errno);
 	return sp;
 }
 
@@ -1431,9 +1455,11 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 	struct tnt_tm *result;
 	const time_t t = *timep;
 
+	printf("DEBUG %s: (1) \n", __func__);
 	if (sp == NULL) {
 		/* Don't bother to set tzname etc.; tzset has already done it.
 		 */
+		printf("DEBUG %s: (2) \n", __func__);
 		return gmtsub(gmtptr, timep, 0, tmp);
 	}
 	if ((sp->goback && t < sp->ats[0]) ||
@@ -1459,7 +1485,10 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 			newt = t - seconds - SECSPERREPEAT;
 
 		if (newt < sp->ats[0] || newt > sp->ats[sp->timecnt - 1])
+		{
+			printf("DEBUG %s: (3) \n", __func__);
 			return NULL; /* "cannot happen" */
+		}
 		result = localsub(sp, &newt, setname, tmp);
 		if (result) {
 			int_fast64_t newy;
@@ -1470,9 +1499,13 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 			else
 				newy += years;
 			if (!(INT_MIN <= newy && newy <= INT_MAX))
+			{
+				printf("DEBUG %s: (4) \n", __func__);
 				return NULL;
+			}
 			result->tm_year = newy;
 		}
+		printf("DEBUG %s: (5) \n", __func__);
 		return result;
 	}
 	if (sp->timecnt == 0 || t < sp->ats[0]) {
@@ -1498,6 +1531,7 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 	**	t += ttisp->tt_utoff;
 	**	timesub(&t, 0L, sp, tmp);
 	*/
+	printf("DEBUG %s: i:%d ttisp:%s tmp:%s\n", __func__, i, fmt_ttinfo(ttisp), fmt_tnt_tm(tmp));
 	result = timesub(&t, ttisp->tt_utoff, sp, tmp);
 	if (result) {
 		result->tm_isdst = ttisp->tt_isdst;
@@ -1507,6 +1541,7 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 		if (setname)
 			update_tzname_etc(sp, ttisp);
 	}
+	printf("DEBUG %s: (6) result:%s\n", __func__, fmt_tnt_tm(result));
 	return result;
 }
 
@@ -1515,7 +1550,11 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 struct tnt_tm *
 tnt_localtime_rz(struct state *sp, time_t const *timep, struct tnt_tm *tmp)
 {
-	return localsub(sp, timep, 0, tmp);
+	printf("DEBUG %s: (IN) sp=%p timep=%p(*%ld) tmp=%s\n", __func__, sp, timep, timep ? *timep : 0, fmt_tnt_tm(tmp));
+	struct tnt_tm *res = localsub(sp, timep, 0, tmp);
+	printf("DEBUG %s: (OUT) sp=%p timep=%p(*%ld) tmp=%s\n", __func__, sp, timep, timep ? *timep : 0, fmt_tnt_tm(tmp));
+	printf("DEBUG %s: res=%s\n", __func__, fmt_tnt_tm(res));
+	return res;
 }
 
 #endif
@@ -1831,3 +1870,21 @@ time(time_t *p)
 }
 
 #endif
+
+const char *
+fmt_tnt_tm(struct tnt_tm *x)
+{
+	if (x == NULL)
+		return "tnt_tm(null)";
+
+	static char buf[1024];
+	snprintf(buf, sizeof(buf), "tnt_tm(x:%p tm_epoch:%ld tm_nsec:%d tm_gmtoff:%ld tm_tzindex:%hd "
+		"| tm_year:%d tm_mon:%d tm_mday:%d tm_yday:%d tm_wday:%d tm_hour:%d tm_min:%d tm_sec:%d tm_isdst:%d)",
+		x,
+		x->tm_epoch, x->tm_nsec, x->tm_gmtoff, x->tm_tzindex,
+		x->tm_year, x->tm_mon, x->tm_mday, x->tm_yday, x->tm_wday,
+		x->tm_hour, x->tm_min, x->tm_sec,
+		x->tm_isdst
+	);
+	return buf;
+}

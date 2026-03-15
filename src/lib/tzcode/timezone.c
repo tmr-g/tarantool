@@ -171,27 +171,42 @@ timezone_tm_lookup(const char *str, size_t len,
 		   const struct date_time_zone **zone,
 		   struct tnt_tm *tm)
 {
+	printf("DEBUG %s: (IN) str=%.*s len=%lu zone=%p tm=%s\n", __func__, (int) len, str, len, zone, fmt_tnt_tm(tm));
 	ssize_t rc = timezone_raw_lookup(str, len, zone);
 	if (rc <= 0)
+	{
+		printf("DEBUG %s: (1) rc=%ld\n", __func__, rc);
 		return rc;
+	}
 
 	const struct date_time_zone *found = *zone;
 	if ((found->flags & TZ_OLSON) == 0) {
 		tm->tm_gmtoff = found->offset * 60;
 		tm->tm_tzindex = found->id;
 		tm->tm_isdst = !!(found->flags & TZ_DST);
+		printf("DEBUG %s: (2) rc=%ld tm=%s\n", __func__, rc, fmt_tnt_tm(tm));
 		return rc;
 	}
 	timezone_t tz = timezone_alloc(str);
 	if (tz == NULL)
+	{
+		printf("DEBUG %s: (3)\n", __func__);
 		return 0;
+	}
 	struct datetime date = {.epoch = 0};
 	if (tm_to_datetime(tm, &date) == false)
+	{
+		printf("DEBUG %s: (4)\n", __func__);
 		return 0;
+	}
 	time_t epoch = (int64_t)date.epoch;
 	struct tnt_tm * result = tnt_localtime_rz(tz, &epoch, tm);
 	if (result == NULL)
+	{
+		printf("DEBUG %s: (5) tm=%s\n", __func__, fmt_tnt_tm(tm));
 		return 0;
+	}
+	printf("DEBUG %s: (6) rc=%ld tm=%s\n", __func__, rc, fmt_tnt_tm(tm));
 	return rc;
 }
 
@@ -200,25 +215,37 @@ timezone_epoch_lookup(const char *str, size_t len, time_t base,
 		      const struct date_time_zone **zone,
 		      long *gmtoff)
 {
+	printf("DEBUG %s: (IN) str=%.*s len=%lu base=%ld zone=%p gmtoff=%p(*%ld)\n", __func__, (int) len, str, len, base, zone, gmtoff, gmtoff ? *gmtoff : 0);
 	ssize_t rc = timezone_raw_lookup(str, len, zone);
 	if (rc <= 0)
+	{
+		printf("DEBUG %s: (1) rc=%ld\n", __func__, rc);
 		return rc;
+	}
 
 	const struct date_time_zone *found = *zone;
 	if ((found->flags & TZ_OLSON) == 0) {
 		assert((TZ_ERROR_MASK & found->flags) == 0);
 		*gmtoff = found->offset * 60;
+		printf("DEBUG %s: (2) rc=%ld *gmtoff=%ld\n", __func__, rc, *gmtoff);
 		return rc;
 	}
 	timezone_t tz = NULL;
 	tz = timezone_alloc(str);
 	if (tz == NULL)
+	{
+		printf("DEBUG %s: (3)\n", __func__);
 		return 0;
+	}
 	struct tnt_tm tm = {.tm_epoch = 0};
 	struct tnt_tm * result = tnt_localtime_rz(tz, &base, &tm);
 	if (result == NULL)
+	{
+		printf("DEBUG %s: (4)\n", __func__);
 		return 0;
+	}
 	*gmtoff = result->tm_gmtoff;
+	printf("DEBUG %s: (5) rc=%ld *gmtoff=%ld\n", __func__, rc, *gmtoff);
 	return rc;
 }
 
@@ -226,15 +253,26 @@ bool
 timezone_tzindex_lookup(int16_t tzindex, struct tnt_tm *tm)
 {
 	assert(tm != NULL);
+	printf("DEBUG %s: (IN) tzindex=%hd tm=%s\n", __func__, tzindex, fmt_tnt_tm(tm));
 	if (tzindex == 0)
+	{
+		printf("DEBUG %s: (1)\n", __func__);
 		return false;
+	}
 
 	timezone_t tz = timezone_alloc(timezone_name(tzindex));
 	if (tz == NULL)
+	{
+		printf("DEBUG %s: (2)\n", __func__);
 		return false;
+	}
 	time_t epoch = (int64_t)tm->tm_epoch;
 	struct tnt_tm *result = tnt_localtime_rz(tz, &epoch, tm);
 	if (result == NULL)
+	{
+		printf("DEBUG %s: (3)\n", __func__);
 		return false;
+	}
+	printf("DEBUG %s: (4) tm=%s\n", __func__, fmt_tnt_tm(tm));
 	return true;
 }
