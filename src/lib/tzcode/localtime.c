@@ -1347,6 +1347,7 @@ tzparse(const char *name, struct state *sp, struct state *basep)
 static int
 zoneinit(struct state *sp, char const *name)
 {
+	printf("DEBUG %s: (IN) sp=%p name=%s\n", __func__, sp, name);
 	if (name && !name[0]) {
 		/*
 		** User wants it fast rather than right.
@@ -1359,6 +1360,7 @@ zoneinit(struct state *sp, char const *name)
 		init_ttinfo(&sp->ttis[0], 0, false, 0);
 		strlcpy(sp->chars, gmt, sizeof sp->chars);
 		sp->defaulttype = 0;
+		printf("DEBUG %s: (1)\n", __func__);
 		return 0;
 	} else {
 		int err = tzload(name, sp, true);
@@ -1367,6 +1369,7 @@ zoneinit(struct state *sp, char const *name)
 			err = 0;
 		if (err == 0)
 			scrub_abbrs(sp);
+		printf("DEBUG %s: (2) err=%d\n", __func__, err);
 		return err;
 	}
 }
@@ -1376,16 +1379,19 @@ zoneinit(struct state *sp, char const *name)
 timezone_t
 tzalloc(char const *name)
 {
+	printf("DEBUG %s: (IN) name=%s\n", __func__, name);
 	timezone_t sp = malloc(sizeof *sp);
 	if (sp) {
 		int err = zoneinit(sp, name);
 		if (err != 0) {
 			free(sp);
 			errno = err;
+			printf("DEBUG %s: (1) errno=%d\n", __func__, errno);
 			return NULL;
 		}
 	} else if (!HAVE_MALLOC_ERRNO)
 		errno = ENOMEM;
+	printf("DEBUG %s: (OUT) sp=%p errno=%d\n", __func__, sp, errno);
 	return sp;
 }
 
@@ -1515,7 +1521,11 @@ localsub(struct state const *sp, time_t const *timep, int_fast32_t setname,
 struct tnt_tm *
 tnt_localtime_rz(struct state *sp, time_t const *timep, struct tnt_tm *tmp)
 {
-	return localsub(sp, timep, 0, tmp);
+	printf("DEBUG %s: (IN) sp=%p timep=%p(*%ld) tmp=%s\n", __func__, sp, timep, timep ? *timep : 0, fmt_tnt_tm(tmp));
+	struct tnt_tm *res = localsub(sp, timep, 0, tmp);
+	printf("DEBUG %s: (OUT) sp=%p timep=%p(*%ld) tmp=%s\n", __func__, sp, timep, timep ? *timep : 0, fmt_tnt_tm(tmp));
+	printf("DEBUG %s: res=%s\n", __func__, fmt_tnt_tm(res));
+	return res;
 }
 
 #endif
@@ -1831,3 +1841,21 @@ time(time_t *p)
 }
 
 #endif
+
+const char *
+fmt_tnt_tm(struct tnt_tm *x)
+{
+	if (x == NULL)
+		return "tnt_tm(null)";
+
+	static char buf[1024];
+	snprintf(buf, sizeof(buf), "tnt_tm(x:%p tm_epoch:%ld tm_nsec:%d tm_gmtoff:%ld tm_tzindex:%hd "
+		"| tm_year:%d tm_mon:%d tm_mday:%d tm_yday:%d tm_wday:%d tm_hour:%d tm_min:%d tm_sec:%d tm_isdst:%d)",
+		x,
+		x->tm_epoch, x->tm_nsec, x->tm_gmtoff, x->tm_tzindex,
+		x->tm_year, x->tm_mon, x->tm_mday, x->tm_yday, x->tm_wday,
+		x->tm_hour, x->tm_min, x->tm_sec,
+		x->tm_isdst
+	);
+	return buf;
+}
