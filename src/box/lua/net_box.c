@@ -70,6 +70,8 @@
 
 #define cfg luaL_msgpack_default
 
+#define say_dbg(fmt, ...) say(S_INFO, NULL, "DEBUG NETBOXLIB (%s): " fmt, __func__, ##__VA_ARGS__)
+
 enum {
 	/**
 	 * connect() timeout used by default, in seconds.
@@ -484,6 +486,7 @@ netbox_request_set_result(struct netbox_request *request, int result_ref)
 {
 	assert(request->result_ref == LUA_NOREF);
 	request->result_ref = result_ref;
+	say_dbg("END result_ref=%d", result_ref);
 }
 
 static inline void
@@ -1633,6 +1636,7 @@ netbox_decode_table(struct lua_State *L, const char **data,
 		    const char *data_end, bool return_raw,
 		    struct tuple_format *format)
 {
+	say_dbg("ENTER");
 	(void)format;
 	struct response_body response_body;
 	response_body_decode(&response_body, data, data_end);
@@ -1641,15 +1645,19 @@ netbox_decode_table(struct lua_State *L, const char **data,
 		return;
 	}
 	struct mp_box_ctx ctx;
+	say_dbg("1 formats=%p flen=%lu", response_body.tuple_formats, response_body.tuple_formats_end - response_body.tuple_formats);
 	mp_box_ctx_create(&ctx, NULL, response_body.tuple_formats);
 	if (return_raw) {
+		say_dbg("2 RAW");
 		luamp_push_with_ctx(L, response_body.data,
 				    response_body.data_end,
 				    (struct mp_ctx *)&ctx);
 	} else {
+		say_dbg("3 DECODE");
 		luamp_decode_with_ctx(L, cfg, &response_body.data,
 				      (struct mp_ctx *)&ctx);
 	}
+	say_dbg("END");
 	mp_ctx_destroy((struct mp_ctx *)&ctx);
 }
 
@@ -2551,6 +2559,7 @@ luaT_netbox_transport_make_request(struct lua_State *L, int idx,
 	request->error = NULL;
 	request->remote_ref = LUA_NOREF;
 	netbox_request_register(request, transport);
+	say_dbg("END transport=%p request=%p", transport, request);
 	return 0;
 }
 
@@ -2574,6 +2583,7 @@ static int
 luaT_netbox_transport_perform_request(struct lua_State *L)
 {
 	struct netbox_transport *transport = luaT_check_netbox_transport(L, 1);
+	say_dbg("ENTER transport=%p", transport);
 	double timeout = (!lua_isnil(L, 2) ?
 			  lua_tonumber(L, 2) : TIMEOUT_INFINITY);
 	struct netbox_request request;
@@ -2590,6 +2600,7 @@ luaT_netbox_transport_perform_request(struct lua_State *L)
 	}
 	int ret = netbox_request_push_result(&request, L);
 	netbox_request_destroy(&request);
+	say_dbg("END ret=%d", ret);
 	return ret;
 }
 
@@ -2801,19 +2812,23 @@ netbox_transport_dispatch_response(struct netbox_transport *transport,
 		netbox_request_complete(request);
 		return;
 	}
+	say_dbg("1 transport=%p request=%p(method=%d)", transport, request, request->method);
 	const char *data = hdr->body[0].iov_base;
 	const char *data_end = data + hdr->body[0].iov_len;
 	if (request->buffer != NULL) {
+		say_dbg("2 transport=%p request=%p(method=%d)", transport, request, request->method);
 		netbox_write_response_to_buffer(data, data_end, L,
 						request->buffer,
 						request->skip_header);
 	} else {
 		/* Decode xrow.body[DATA] to Lua objects. */
 		if (status == IPROTO_OK) {
+			say_dbg("3 transport=%p request=%p(method=%d)", transport, request, request->method);
 			netbox_decode_method(L, request->method, &data,
 					     data_end, request->return_raw,
 					     request->format);
 		} else {
+			say_dbg("4 transport=%p request=%p(method=%d)", transport, request, request->method);
 			netbox_decode_value(L, &data, data_end,
 					    request->return_raw,
 					    request->format);
@@ -2821,6 +2836,7 @@ netbox_transport_dispatch_response(struct netbox_transport *transport,
 		assert(data == data_end);
 	}
 	if (status == IPROTO_OK) {
+		say_dbg("5 transport=%p request=%p(method=%d)", transport, request, request->method);
 		/*
 		 * We received the final response and pushed it to Lua stack.
 		 * Store a reference to it in the request, remove the request
@@ -2830,6 +2846,7 @@ netbox_transport_dispatch_response(struct netbox_transport *transport,
 					  luaL_ref(L, LUA_REGISTRYINDEX));
 		netbox_request_complete(request);
 	} else {
+		say_dbg("6 transport=%p request=%p(method=%d)", transport, request, request->method);
 		/* We received a push. Invoke on_push trigger. */
 		lua_rawgeti(L, LUA_REGISTRYINDEX, request->on_push_ref);
 		lua_rawgeti(L, LUA_REGISTRYINDEX, request->on_push_ctx_ref);
