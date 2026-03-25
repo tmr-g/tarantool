@@ -7,6 +7,24 @@ local urilib   = require('uri')
 local internal = require('net.box.lib')
 local trigger  = require('internal.trigger')
 local utils    = require('internal.utils')
+local json      = require('json')
+local yaml      = require('yaml')
+
+local function log_dbg(msg, ...)
+    local function get_loc(level)
+        local frame = require('debug').getinfo(1 + level, "Sln")
+        local loc = '(?)'
+        if type(frame) == 'table' then
+            local line = frame.currentline or 0
+            local file = frame.short_src or frame.src or '?'
+            local name = frame.name or '?'
+            file = require('fio').basename(file)
+            loc = string.format('(%s:%d %s())', file, line, name)
+        end
+        return loc
+    end
+    log.info("DEBUG NETBOX .."..get_loc(3).."->"..get_loc(2)..": "..msg, ...)
+end
 
 local this_module
 
@@ -245,6 +263,7 @@ end
 local space_metatable, index_metatable
 
 local function new_sm(uri_or_fd, opts)
+    log_dbg('new_sm() ENTER uri_or_fd=%s opts=%s', uri_or_fd, json.encode(opts))
     local host, port, fd
     if type(uri_or_fd) == 'string' or type(uri_or_fd) == 'table' then
         local parsed_uri, err = urilib.parse(uri_or_fd)
@@ -273,6 +292,7 @@ local function new_sm(uri_or_fd, opts)
         state = 'initial',
     }
     local function callback(what, ...)
+        log_dbg("callback() 0 ENTER %s", what)
         if remote._fiber == nil then
             remote._fiber = fiber.self()
         end
@@ -412,6 +432,7 @@ local function new_sm(uri_or_fd, opts)
                 end
             end
         end
+        log_dbg("callback() END %s", what)
     end
     if opts.console then
         box.error(box.error.ILLEGAL_PARAMS,
@@ -459,6 +480,7 @@ local function new_sm(uri_or_fd, opts)
             opts.fetch_schema, opts.auth_type)
     weak_refs.transport = transport
     remote._transport = transport
+    log_dbg('new_sm() transport=%s', transport)
     remote._gc_hook = ffi.gc(ffi.new('char[1]'), function()
         pcall(transport.stop, transport);
     end)
@@ -929,22 +951,28 @@ function remote_methods:_request_impl(method, opts, format, stream_id, ...)
         self:wait_state('active', timeout)
         timeout = deadline and max(0, deadline - fiber_clock())
     end
+    log_dbg("remote_methods:_request_impl: 1 stream_id=%s", stream_id)
     local res, err = transport:perform_request(timeout, buffer, skip_header,
                                                return_raw, on_push, on_push_ctx,
                                                format, thread_id, stream_id,
                                                method, ...)
+    log_dbg("remote_methods:_request_impl: 2 res=(%s)%s err=%s", tostring(res), json.encode(res), json.encode(err))
     -- Try to wait until a schema is reloaded if needed.
     -- Regardless of reloading result, the main response is
     -- returned, since it does not depend on any schema things.
     if self.state == 'fetch_schema' then
+        log_dbg("remote_methods:_request_impl: 3")
         timeout = deadline and max(0, deadline - fiber_clock())
         self:wait_state('active', timeout)
+        log_dbg("remote_methods:_request_impl: 4")
     end
+    log_dbg("remote_methods:_request_impl: 5 END")
     return res, err
 end
 
 function remote_methods:_request(method, opts, format, stream_id, ...)
     local res, err = self:_request_impl(method, opts, format, stream_id, ...)
+    log_dbg("remote_methods:_request: res=(%s)%s err=%s", tostring(res), json.encode(res), json.encode(err))
     if err then
         box.error(err)
     end
@@ -980,11 +1008,14 @@ function remote_methods:call(func_name, args, opts)
     check_call_args(args)
     check_param_table(opts, REQUEST_OPTION_TYPES)
     args = args or {}
+    log_dbg("remote_methods:call: 1 fn=%q args=%s opts=%s", func_name, json.encode(args), json.encode(opts))
     local res = self:_request('CALL', opts, nil, self._stream_id,
                               tostring(func_name), args)
     if type(res) ~= 'table' or opts and opts.is_async then
+        log_dbg("remote_methods:call: 2 res=(%s)%s", tostring(res), json.encode(res))
         return res
     end
+    log_dbg("remote_methods:call: 3 END res[1]=%s res=(%s)%s", tostring(res[1]), tostring(res), json.encode(res))
     return unpack(res)
 end
 
@@ -1050,6 +1081,7 @@ end
 
 function remote_methods:_install_schema(schema_version, spaces, indices,
                                         collations, space_sequences)
+    log_dbg("remote_methods:_install_schema: - 0 ENTER spaces=%s", spaces)
     local sl, space_mt, index_mt = {}, self._space_mt, self._index_mt
     for _, space in pairs(spaces) do
         local name = space[3]
@@ -1058,6 +1090,9 @@ function remote_methods:_install_schema(schema_version, spaces, indices,
         local field_count = space[5]
         local format = space[7] or {}
         local s = {}
+        if name == '_vinyl_deferred_delete' then
+            log_dbg("remote_methods:_install_schema - 2 space=%s:\n%s", space, yaml.encode{space = space, name = name, id = id, engine = engine, field_count = field_count, format = format})
+        end
         if self.space ~= nil and self.space[id] ~= nil then
             s = self.space[id]
         else
@@ -1076,7 +1111,9 @@ function remote_methods:_install_schema(schema_version, spaces, indices,
         -- We pass `names_only=true` because format clauses received from IPROTO
         -- can be incompatible with, for instance, the data types known on the
         -- client.
+        log_dbg("remote_methods:_install_schema - 3")
         s._format_cdata = box.internal.tuple_format.new(format, true)
+        log_dbg("remote_methods:_install_schema - 4")
         s.connection = self
         if #space > 5 then
             local opts = space[6]
@@ -1177,6 +1214,7 @@ function remote_methods:_install_schema(schema_version, spaces, indices,
         end
     end
 
+    log_dbg("remote_methods:_install_schema: -1 END")
     self.schema_version = schema_version
     self.space = sl
     local ok, err = pcall(self._on_schema_reload.run, self._on_schema_reload,
@@ -1184,6 +1222,7 @@ function remote_methods:_install_schema(schema_version, spaces, indices,
     if not ok then
         log.error(err)
     end
+    log_dbg("remote_methods:_install_schema: -0 END")
 end
 
 local function nothing_or_data(value)

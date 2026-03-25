@@ -4,6 +4,21 @@ local config = require('config')
 local checks = require('checks')
 local fun = require('fun')
 local netbox = require('net.box')
+local log = require('log')
+local json = require('json')
+
+local function log_dbg(msg, ...)
+    local frame = require('debug').getinfo(2, "Sln")
+    local loc = '(?)'
+    if type(frame) == 'table' then
+        local line = frame.currentline or 0
+        local file = frame.short_src or frame.src or '?'
+        local name = frame.name or '?'
+        file = require('fio').basename(file)
+        loc = string.format('(%s:%d %s())', file, line, name)
+    end
+    log.info("DEBUG CONNPOOL "..loc..": "..msg, ...)
+end
 
 local WATCHER_DELAY = 0.1
 local WATCHER_TIMEOUT = 10
@@ -177,6 +192,7 @@ function pool_methods.connect(self, instance_name, opts)
         fetch_schema = '?boolean',
     })
     opts = opts or {}
+    log_dbg("pool_methods.connect: 0 ENTER opts=%s", json.encode(opts))
 
     local conn = self._connections[instance_name]
     local old_deadline = (conn or {})._deadline
@@ -193,15 +209,20 @@ function pool_methods.connect(self, instance_name, opts)
             wait_connected = false,
             fetch_schema = opts.fetch_schema,
         }
+        log_dbg("pool_methods.connect: 1: conn_opts=%s", json.encode(conn_opts))
         local ok, res = pcall(netbox.connect, uri, conn_opts)
         if not ok then
             local msg = 'Unable to connect to instance %q: %s'
+            log_dbg("pool_methods.connect: 2: error msg=%q", msg)
             return nil, msg:format(instance_name, res.message)
         end
         conn = res
         self._connections[instance_name] = conn
         local function mode(conn)
+            log_dbg("pool_methods.connect: mode() conn.state=%q conn.error=%q", conn.state, conn.error)
+
             if conn.state == 'active' then
+                log_dbg("pool_methods.connect: mode() conn._mode=%s", conn._mode)
                 return conn._mode
             end
             return nil
@@ -215,6 +236,7 @@ function pool_methods.connect(self, instance_name, opts)
         end
         conn:watch('box.status', watch_status)
         local function on_disconnect()
+            log_dbg("pool_methods.connect: on_disconnect() called")
             conn._reconnect = clock.monotonic() + RECONNECT_AFTER
             self:_failed_connection_watchdog_wake()
         end
@@ -233,8 +255,10 @@ function pool_methods.connect(self, instance_name, opts)
     -- established or an error occurs (including a timeout error).
     if opts.wait_connected ~= false and conn:wait_connected() == false then
         local msg = 'Unable to connect to instance %q: %s'
+        log_dbg("pool_methods.connect: 3: "..msg, instance_name, conn.error)
         return nil, msg:format(instance_name, conn.error)
     end
+    log_dbg("pool_methods.connect: 4 END")
     return conn
 end
 
@@ -257,6 +281,7 @@ function pool_methods.connect_to_multiple(self, instances, opts)
     if opts == nil then opts = {} end
     if next(instances) == nil then return {} end
     assert(opts.any == nil or type(opts.any) == 'function')
+    log_dbg("pool_methods.connect_to_multiple: ENTER")
 
     -- Checks whether the candidate is connected and active.
     local function is_instance_connected(instance_name)
@@ -303,7 +328,9 @@ function pool_methods.connect_to_multiple(self, instances, opts)
         -- it is a candidate and will wait for the connection to
         -- fail/succeed.
         if conn == nil then
+            log_dbg("pool_methods.connect_to_multiple: 1: connect %s", json.encode(instance_name))
             self:connect(instance_name, {wait_connected = false})
+            log_dbg("pool_methods.connect_to_multiple: 2: connect OK %s", json.encode(instance_name))
             table.insert(candidate_instances, instance_name)
         -- If the connection is already ok it is likely it should
         -- be returned as is.
@@ -480,10 +507,12 @@ end
 
 local function is_mode_match(mode, instance_name)
     if mode == nil then
+        log_dbg("is_mode_match: 1 instance=%s mode=nil res=true", instance_name)
         return true
     end
     local conn = pool:get_connection(instance_name)
     assert(conn ~= nil and conn:mode() ~= nil)
+    log_dbg("is_mode_match: 2 instance=%s mode=%s res=%s", instance_name, mode, conn:mode() == mode)
     return conn:mode() == mode
 end
 
@@ -492,9 +521,11 @@ local function is_candidate_match_dynamic(instance_name, opts)
 
     local conn = pool:get_connection(instance_name)
     if not conn or conn:mode() == nil then
+        log_dbg("is_candidate_match_dynamic: 1 - instance_name=%s conn not nil:%s", instance_name, conn ~= nil)
         return
     end
 
+    log_dbg("is_candidate_match_dynamic: 2 - instance_name=%s conn:mode()=%s", instance_name, conn:mode())
     return is_mode_match(opts.mode, instance_name)
 end
 
@@ -526,6 +557,7 @@ local function filter(opts)
     if wait_mode == nil then
         wait_mode = 'wait'
     end
+    log_dbg("0 ENTER args=%s", json.encode({opts = opts, wait_mode = wait_mode}))
 
     if opts.mode ~= nil and opts.mode ~= 'ro' and opts.mode ~= 'rw' then
         local msg = 'Expected nil, "ro" or "rw", got "%s"'
@@ -564,6 +596,7 @@ local function filter(opts)
     local dynamic_opts = {
         mode = opts.mode,
     }
+    log_dbg("1: %s", json.encode({static_opts = static_opts, dynamic_opts = dynamic_opts}))
 
     -- First, select candidates using the information from the config.
     local static_candidates = {}
@@ -572,6 +605,7 @@ local function filter(opts)
             table.insert(static_candidates, instance_name)
         end
     end
+    log_dbg("2: %s", json.encode(static_candidates))
 
     -- Return if the connection check isn't needed.
     if opts.skip_connection_check then
@@ -585,6 +619,7 @@ local function filter(opts)
         -- The connect_to_candidates() call returns quickly if it
         -- receives empty table as an argument.
         connected_candidates = pool:connect_to_multiple(static_candidates)
+        log_dbg("2-res1: %s", json.encode(connected_candidates))
     elseif wait_mode == 'any' then
         -- Try to connect to the candidates until at least one
         -- satisfying the dynamic requirements is found.
@@ -593,9 +628,11 @@ local function filter(opts)
                 return is_candidate_match_dynamic(instance_name, dynamic_opts)
             end,
         })
+        log_dbg("2-res2: %s", json.encode(connected_candidates))
     elseif wait_mode == 'no wait' then
         -- Only continue with already polled instances.
         connected_candidates = static_candidates
+        log_dbg("2-res3: %s", json.encode(connected_candidates))
     else
         assert(false, 'Unexpected _wait_mode value.')
     end
@@ -606,6 +643,7 @@ local function filter(opts)
             table.insert(dynamic_candidates, instance_name)
         end
     end
+    log_dbg("END: res=%s", json.encode(dynamic_candidates))
     return dynamic_candidates
 end
 
@@ -624,27 +662,32 @@ local function get_connection(opts)
         mode = mode,
     }
 
+    log_dbg("1 ENTER candidates_opts=%s", json.encode(candidates_opts))
     -- If the mode is not prefer_*, try to find already connected
     -- candidates.
     local candidates
     if opts.mode == 'prefer_rw' or opts.mode == 'prefer_ro' then
         candidates = filter(candidates_opts)
+        log_dbg("2:%s", json.encode(candidates))
     else
         -- Try to find already connected candidates.
         candidates_opts._wait_mode = 'no wait'
         candidates = filter(candidates_opts)
+        log_dbg("3:%s", json.encode(candidates))
 
         -- Try to find at least one connected otherwise.
         if next(candidates) == nil then
             candidates_opts._wait_mode = 'any'
             candidates = filter(candidates_opts)
         end
+        log_dbg("4:%s", json.encode(candidates))
 
         -- Last resort: try to connect to all the candidates.
         if next(candidates) == nil then
             candidates_opts._wait_mode = 'wait'
             candidates = filter(candidates_opts)
         end
+        log_dbg("5:%s", json.encode(candidates))
     end
 
     if next(candidates) == nil then
@@ -742,6 +785,7 @@ local function call(func_name, args, opts)
         prefer_local = opts.prefer_local,
         mode = opts.mode,
     }
+    log_dbg("call() 1 ENTER conn_opts=%s", json.encode(conn_opts))
     local conn, err = get_connection(conn_opts)
     if conn == nil then
         local msg = "Couldn't execute function %s: %s"
@@ -755,6 +799,7 @@ local function call(func_name, args, opts)
         on_push_ctx = opts.on_push_ctx,
         is_async = opts.is_async,
     }
+    log_dbg("call() 2 net_box_call_opts=%s", json.encode(net_box_call_opts))
     return conn:call(func_name, args, net_box_call_opts)
 end
 
