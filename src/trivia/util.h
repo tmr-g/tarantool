@@ -940,6 +940,11 @@ lsan_turn_off(void)
 
 #endif
 
+#ifndef NDEBUG
+const char *
+fmt(const char *fmt, ...) CFORMAT(printf, 1, 2);
+#endif /* !NDEBUG */
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */

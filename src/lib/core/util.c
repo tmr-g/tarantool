@@ -648,3 +648,47 @@ lsan_turn_off(void)
 }
 
 #endif
+
+const char *
+fmt_va(const char *fmt, va_list args)
+{
+	size_t buf_size = 1024*1024;
+	static char *buf;
+	static size_t buf_used;
+	if (buf == NULL)
+	{
+		buf = (char *) malloc(buf_size);
+		assert(buf != NULL);
+		buf_used = 0;
+	}
+
+	va_list args_copy;
+	va_copy(args_copy, args);
+
+	int res = vsnprintf(NULL, 0, fmt, args);
+	assert(res >= 0);
+	size_t size = (size_t)res + 1;
+
+	/* Recycle as in static alloc. */
+	assert(size <= buf_size);
+	if (buf_used + size > buf_size)
+		buf_used = 0;
+	char *str = buf + buf_used;
+	buf_used += size;
+
+	res = vsnprintf(str, size, fmt, args_copy);
+	assert((res >= 0) && (size_t)res == size - 1);
+	va_end(args_copy);
+	return str;
+}
+
+const char *
+fmt(const char *fmt, ...)
+{
+	va_list args;
+	const char *ret;
+	va_start(args, fmt);
+	ret = fmt_va(fmt, args);
+	va_end(args);
+	return ret;
+}
