@@ -2,6 +2,8 @@
 #include "mp_decimal.h"
 #include "mp_extension_types.h"
 #include "msgpuck.h"
+#include "small/static.h"
+#include "trivia/util.h"
 #include <limits.h>
 #include <string.h>
 #include <inttypes.h>
