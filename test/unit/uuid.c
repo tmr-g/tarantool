@@ -5,6 +5,11 @@
 #include "tt_uuid.h"
 #include <string.h>
 
+/* For temporary bench. */
+// #include <time.h>
+// #include "small/static.h"
+// #include "trivia/util.h"
+
 #define UNIT_TAP_COMPATIBLE 1
 #include "unit.h"
 
@@ -106,6 +111,30 @@ mp_print_test(void)
 
         mp_snprint_ext = mp_snprint_ext_default;
         mp_fprint_ext = mp_fprint_ext_default;
+
+/* Temporary bench. */
+/*
+uint64_t diff(struct timespec *a, struct timespec *b)
+{
+	uint64_t nsa = (uint64_t)a->tv_sec * 1000000000 + (uint64_t)a->tv_nsec;
+	uint64_t nsb = (uint64_t)b->tv_sec * 1000000000 + (uint64_t)b->tv_nsec;
+	return nsa - nsb;
+}
+
+	struct timespec t0, t1;
+	clock_gettime(CLOCK_REALTIME, &t0);
+	for (int i = 0; i < 1000000; i++)
+		TOSTR(tt_uuid_snprint, UUID_STR_LEN, &uuid);
+	clock_gettime(CLOCK_REALTIME, &t1);
+	note("T1=%ld", diff(&t1, &t0));
+
+	clock_gettime(CLOCK_REALTIME, &t0);
+	for (int i = 0; i < 1000000; i++)
+		TOSTR(tt_uuid_snprint, 0, &uuid);
+	clock_gettime(CLOCK_REALTIME, &t1);
+	note("T2=%ld", diff(&t1, &t0));
+*/
+/* Temporary bench. END */
 
         footer();
         check_plan();

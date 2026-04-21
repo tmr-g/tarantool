@@ -219,9 +219,7 @@ vy_range_snprint(char *buf, int size, const struct vy_range *range);
 static inline const char *
 vy_range_str(struct vy_range *range)
 {
-	char *buf = tt_static_buf();
-	vy_range_snprint(buf, TT_STATIC_BUF_LEN, range);
-	return buf;
+	return TOSTR(vy_range_snprint, TT_STATIC_BUF_LEN, range);
 }
 
 /** Add a run slice to the head of a range's list. */

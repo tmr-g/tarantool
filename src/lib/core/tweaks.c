@@ -211,10 +211,8 @@ invalid_enum_errmsg_snprint(char *buf, int size,
 static const char *
 invalid_enum_errmsg(const char *const *enum_strs, int enum_max)
 {
-	char *buf = tt_static_buf();
-	invalid_enum_errmsg_snprint(buf, TT_STATIC_BUF_LEN,
-				    enum_strs, enum_max);
-	return buf;
+	return TOSTR(invalid_enum_errmsg_snprint, TT_STATIC_BUF_LEN,
+		     enum_strs, enum_max);
 }
 
 int

@@ -936,9 +936,8 @@ vy_row_index_decode(uint32_t *row_index, uint32_t row_count,
 static inline const char *
 vy_run_filename(struct vy_run *run)
 {
-	char *buf = tt_static_buf();
-	vy_run_snprint_filename(buf, TT_STATIC_BUF_LEN, run->id, VY_FILE_RUN);
-	return buf;
+	return TOSTR(vy_run_snprint_filename, TT_STATIC_BUF_LEN,
+		     run->id, VY_FILE_RUN);
 }
 
 /**

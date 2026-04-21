@@ -230,11 +230,7 @@ raft_scores_snprintf(char *buf, int size, const struct raft *raft)
 static const char *
 raft_scores_str(const struct raft *raft)
 {
-	char *buf = tt_static_buf();
-	int rc = raft_scores_snprintf(buf, TT_STATIC_BUF_LEN, raft);
-	assert(rc >= 0);
-	(void)rc;
-	return buf;
+	return TOSTR(raft_scores_snprintf, TT_STATIC_BUF_LEN, raft);
 }
 
 static inline bool
@@ -400,10 +396,7 @@ raft_msg_snprint(char *buf, int size, const struct raft_msg *req)
 static const char *
 raft_msg_to_string(const struct raft_msg *req)
 {
-	char *buf = tt_static_buf();
-	int res = raft_msg_snprint(buf, TT_STATIC_BUF_LEN, req);
-	assert(res > 0);
-	return buf;
+	return TOSTR(raft_msg_snprint, TT_STATIC_BUF_LEN, req);
 }
 
 void

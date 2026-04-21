@@ -445,9 +445,8 @@ box_update_ro_summary(void)
 				txn_set_flags(txn, TXN_IS_ABORTED_RO_NODE);
 			}
 		}
-		char *buf = tt_static_buf();
-		VERIFY(box_ro_state_msg_snprint(buf, TT_STATIC_BUF_LEN) > 0);
-		say_info("box switched to read-only - %s", buf);
+		say_info("box switched to read-only - %s",
+			 TOSTR(box_ro_state_msg_snprint, TT_STATIC_BUF_LEN));
 	} else {
 		say_info("box switched to rw");
 	}
@@ -493,9 +492,8 @@ box_check_writable(void)
 		return 0;
 	struct error *e = diag_set(ClientError, ER_READONLY);
 	struct raft *raft = box_raft();
-	char *buf = tt_static_buf();
-	VERIFY(box_ro_state_msg_snprint(buf, TT_STATIC_BUF_LEN) > 0);
-	error_append_msg(e, " - %s", buf);
+	error_append_msg(e, " - %s",
+			 TOSTR(box_ro_state_msg_snprint, TT_STATIC_BUF_LEN));
 	error_set_str(e, "reason", box_ro_reason());
 	/*
 	 * In case of multiple reasons at the same time only one is reported.

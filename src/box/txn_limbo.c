@@ -86,10 +86,7 @@ synchro_request_snprint(char *buf, int size, const struct synchro_request *req)
 static const char *
 synchro_request_str(const struct synchro_request *req)
 {
-	char *buf = tt_static_buf();
-	if (synchro_request_snprint(buf, TT_STATIC_BUF_LEN, req) < 0)
-		panic("couldn't stringify a synchro request");
-	return buf;
+	return TOSTR(synchro_request_snprint, TT_STATIC_BUF_LEN, req);
 }
 
 /** Write the request into the journal. */

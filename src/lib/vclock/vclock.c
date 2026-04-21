@@ -73,10 +73,7 @@ vclock_snprint(char *buf, int size, const struct vclock *vclock)
 const char *
 vclock_to_string(const struct vclock *vclock)
 {
-	char *buf = tt_static_buf();
-	if (vclock_snprint(buf, TT_STATIC_BUF_LEN, vclock) < 0)
-		return "<failed to format vclock>";
-	return buf;
+	return TOSTR(vclock_snprint, TT_STATIC_BUF_LEN, vclock);
 }
 
 size_t

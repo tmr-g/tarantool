@@ -759,6 +759,59 @@ json_syslog_escape_inplace(char *buf, int size);
 	}									\
 } while(0)
 
+/**
+ * Helper macro for stringization via snprintf-function `func` to dynamically
+ * allocated buffer. Static allocator is used for allocations.
+ *
+ * For cropping to maxlen > 0:
+ *   - allocated sz = (maxlen + 1).
+ *   - strlen(result) <= maxlen.
+ *
+ * For calculated result length (maxlen == 0):
+ *   - allocates precisely sz = (strlen(result) + 1)
+ *     in a cost of +1 `func` call.
+ *
+ * TOSTR_ERRRES_TEXT() message returned if error occurs:
+ *   - allocation fails for sz >= SMALL_STATIC_SIZE.
+ *   - `func` error.
+ *
+ * `maxlen` assumed to be a constant, so compiler must optimize out non matching
+ * branches.
+ */
+#define TOSTR_ERRRES_TEXT(func) "<TOSTR(" #func ") err>"
+#define TOSTR_HANDLE_ERR(func, err_cond) \
+	if (err_cond) { \
+		_buf = (char *)TOSTR_ERRRES_TEXT(func); \
+		break; \
+	}
+#define TOSTR(func, maxlen, ...) \
+({ \
+	char *_buf; \
+	do { \
+		assert((maxlen) >= 0); \
+		/* Calc size. */ \
+		int _buf_size; \
+		if ((maxlen) == 0) { \
+			_buf_size = func(NULL, 0, ##__VA_ARGS__); \
+			TOSTR_HANDLE_ERR(func, _buf_size < 0); \
+		} else { \
+			_buf_size = (maxlen); \
+		} \
+		/* Allocate. Align as in tt_static_buf(). */ \
+		_buf = (char *)static_aligned_alloc(_buf_size + 1, \
+						    sizeof(intptr_t)); \
+		TOSTR_HANDLE_ERR(func, _buf == NULL); \
+		/* Printing. */ \
+		int _res = func(_buf, _buf_size + 1, ##__VA_ARGS__); \
+		TOSTR_HANDLE_ERR(func, _res < 0); \
+		if ((maxlen) == 0) { \
+			/* Check consistensy beetwen 1st and 2nd func call. */ \
+			assert(_res == _buf_size); \
+		} \
+	} while (0); \
+	_buf; \
+})
+
 #define COMPARE_RESULT(a, b) (a < b ? -1 : a > b)
 
 /**

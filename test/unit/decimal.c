@@ -2,6 +2,8 @@
 #include "mp_decimal.h"
 #include "mp_extension_types.h"
 #include "msgpuck.h"
+#include "small/static.h"
+#include "trivia/util.h"
 #include <limits.h>
 #include <string.h>
 #include <inttypes.h>
@@ -527,6 +529,30 @@ test_print(void)
 	buf[limited_len] = '\0';
 	is(strcmp(limited_buf, buf), 0,
 	   "checking decimal_snprint(exp(1)) to limited_buf[%d]", limited_len);
+
+/* Temporary bench. */
+/*
+uint64_t diff(struct timespec *a, struct timespec *b)
+{
+	uint64_t nsa = (uint64_t)a->tv_sec * 1000000000 + (uint64_t)a->tv_nsec;
+	uint64_t nsb = (uint64_t)b->tv_sec * 1000000000 + (uint64_t)b->tv_nsec;
+	return nsa - nsb;
+}
+
+	struct timespec t0, t1;
+	clock_gettime(CLOCK_REALTIME, &t0);
+	for (int i = 0; i < 1000000; i++)
+		TOSTR(decimal_snprint, DECIMAL_MAX_STR_LEN, &one);
+	clock_gettime(CLOCK_REALTIME, &t1);
+	note("T1=%ld", diff(&t1, &t0));
+
+	clock_gettime(CLOCK_REALTIME, &t0);
+	for (int i = 0; i < 1000000; i++)
+		TOSTR(decimal_snprint, 0, &one);
+	clock_gettime(CLOCK_REALTIME, &t1);
+	note("T2=%ld", diff(&t1, &t0));
+*/
+/* Temporary bench END. */
 
 	footer();
 	check_plan();
