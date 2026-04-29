@@ -861,23 +861,18 @@ box_tuple_validate(box_tuple_t *tuple, box_tuple_format_t *format)
 
 /* }}} box_tuple_* */
 
+// XXX fmt P Np Ee | tuple_snprint | snprintf/mp_snprint
 int
 tuple_snprint(char *buf, int size, struct tuple *tuple)
 {
-	int total = 0;
-	if (tuple == NULL) {
-		SNPRINT(total, snprintf, buf, size, "<NULL>");
-		return total;
-	}
-	SNPRINT(total, mp_snprint, buf, size, tuple_data(tuple));
-	return total;
+	SNPRINT_HANDLE_NULL(true, buf, size, tuple);
+	return mp_snprint(buf, size, tuple_data(tuple));
 }
 
+// XXX fmt F Nf Es Mc | tuple_str | tt_static_buf | tuple_snprint
+// old msg: "<failed to format tuple>"
 const char *
 tuple_str(struct tuple *tuple)
 {
-	char *buf = tt_static_buf();
-	if (tuple_snprint(buf, TT_STATIC_BUF_LEN, tuple) < 0)
-		return "<failed to format tuple>";
-	return buf;
+	return TOSTR_GENERIC(tuple_snprint, TOSTR_ERR_MSG, -TT_STATIC_BUF_LEN, tuple);
 }

@@ -759,6 +759,12 @@ json_syslog_escape_inplace(char *buf, int size);
 	}									\
 } while(0)
 
+#define SNPRINT_HANDLE_NULL(accept_null, buf, size, val_ptr) do { \
+	if ((accept_null) && (val_ptr) == NULL) \
+		return snprintf((buf), (size), "<NULL>"); \
+	assert((val_ptr) != NULL); \
+} while (0)
+
 /**
  * Helper macro to allocate buffer of required size and to print obj via
  * printer func to this buffer.
@@ -782,6 +788,88 @@ json_syslog_escape_inplace(char *buf, int size);
 	} while (0); \
 	_buf; \
 })
+
+/*
+ *
+ */
+#define TOSTR_NO_ERR 0
+#define TOSTR_ERR_MSG 1
+#define TOSTR_PANIC 2
+#define TOSTR_ERR_TEXT(func) "<tostr(" #func ") err>"
+
+#define TOSTR_NO_ERR_0(cond) \
+	assert(!(cond)); if (unlikely(cond)) { _buf = NULL; break }
+#define TOSTR_NO_ERR_1(cond)
+#define TOSTR_NO_ERR_2(cond)
+
+#define TOSTR_ERR_MSG_0(func, cond)
+#define TOSTR_ERR_MSG_1(func, cond) \
+	if (cond) { _buf = TOSTR_ERR_TEXT(func); break; }
+#define TOSTR_ERR_MSG_2(cond)
+
+#define TOSTR_PANIC_0(func, cond)
+#define TOSTR_PANIC_1(func, cond)
+#define TOSTR_PANIC_2(func, cond) \
+	if (cond) panic(TOSTR_ERR_TEXT(func))
+
+#define TOSTR_HANDLE_ERR(func, err, cond) \
+	TOSTR_NO_ERR_##err(cond); \
+	TOSTR_ERR_MSG_##err(func, cond); \
+	TOSTR_PANIC_##err(func, cond);
+
+#define TOSTR_GENERIC(func, err, len, ...) \
+({ \
+	char *_buf; \
+	do { \
+		/* Calc size. */ \
+		int _buf_size; \
+		if ((len) < 0) \
+			_buf_size = -(len); \
+		if ((len) > 0) \
+			_buf_size = (len); \
+		if ((len) == 0) { \
+			_buf_size = func(NULL, 0, ##__VA_ARGS__); \
+			TOSTR_HANDLE_ERR(func, err, _buf_size < 0); \
+		} \
+		/* Allocate. */ \
+		_buf = (char *)static_alloc(_buf_size + 1); \
+		TOSTR_HANDLE_ERR(func, err, _buf == NULL); \
+		/* Printing. */ \
+		int _res = func(_buf, _buf_size + 1, ##__VA_ARGS__); \
+		TOSTR_HANDLE_ERR(func, err, _res < 0); \
+		/* Check len. */ \
+		/* (len) < 0 -> cropping allowed */ \
+		if ((len) > 0) { \
+			TOSTR_HANDLE_ERR(func, err, _res > _buf_size); \
+		} \
+		if ((len) == 0) { \
+			TOSTR_HANDLE_ERR(func, err, _res != _buf_size); \
+		} \
+	} while (0); \
+	_buf; \
+})
+
+/* Common reduction, optimal for debug purposes. */
+#define TOSTR(func, ...) TOSTR_GENERIC(func, TOSTR_ERR_MSG, 0, ##__VA_ARGS__)
+
+/* More reductions: */
+#define TOSTR_NE(func, len, ...) TOSTR_GENERIC(func, TOSTR_NO_ERR, len, ##__VA_ARGS__)
+#define TOSTR_ER(func, len, ...) TOSTR_GENERIC(func, TOSTR_ERR_MSG, len, ##__VA_ARGS__)
+#define TOSTR_PA(func, len, ...) TOSTR_GENERIC(func, TOSTR_PANIC, len, ##__VA_ARGS__)
+
+/* If we want to use TOSTR_GENERIC explicitly, we need yet more reductions: */
+/* calc Len */
+#define TOSTR_NE_L(func, ...) TOSTR_NE(func, 0, ##__VA_ARGS__)
+#define TOSTR_ER_L(func, ...) TOSTR_ER(func, 0, ##__VA_ARGS__)
+#define TOSTR_PA_L(func, ...) TOSTR_PA(func, 0, ##__VA_ARGS__)
+/* fixed No crop */
+#define TOSTR_NE_N(func, ...) TOSTR_NE(func, TT_STATIC_BUF_LEN, ##__VA_ARGS__)
+#define TOSTR_ER_N(func, ...) TOSTR_ER(func, TT_STATIC_BUF_LEN, ##__VA_ARGS__)
+#define TOSTR_PA_N(func, ...) TOSTR_PA(func, TT_STATIC_BUF_LEN, ##__VA_ARGS__)
+/* fixed Cropped */
+#define TOSTR_NE_C(func, ...) TOSTR_NE(func, -TT_STATIC_BUF_LEN, ##__VA_ARGS__)
+#define TOSTR_ER_C(func, ...) TOSTR_ER(func, -TT_STATIC_BUF_LEN, ##__VA_ARGS__)
+#define TOSTR_PA_C(func, ...) TOSTR_PA(func, -TT_STATIC_BUF_LEN, ##__VA_ARGS__)
 
 #define COMPARE_RESULT(a, b) (a < b ? -1 : a > b)
 

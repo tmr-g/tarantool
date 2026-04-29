@@ -214,9 +214,11 @@ vy_range_delete(struct vy_range *range)
 	free(range);
 }
 
+// XXX fmt P Ns Ee | vy_range_snprint | snprintf/tuple_snprint
 int
 vy_range_snprint(char *buf, int size, const struct vy_range *range)
 {
+	SNPRINT_HANDLE_NULL(false, buf, size, range);
 	int total = 0;
 	SNPRINT(total, snprintf, buf, size, "(");
 	if (range->begin.stmt != NULL)
