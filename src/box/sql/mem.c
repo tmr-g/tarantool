@@ -127,6 +127,7 @@ mem_is_field_compatible(const struct Mem *mem, enum field_type type)
 	return field_mp_plain_type_is_compatible(type, mp_type, true);
 }
 
+// XXX fmt P | mem_snprintf ...
 int
 mem_snprintf(char *buf, size_t size, const struct Mem *mem)
 {
@@ -182,6 +183,7 @@ mem_snprintf(char *buf, size_t size, const struct Mem *mem)
 	return res;
 }
 
+// XXX fmt F ~ mem_strdup -- аналог TOSTR_NE но со своим аллокатором
 char *
 mem_strdup(const struct Mem *mem)
 {
@@ -192,6 +194,7 @@ mem_strdup(const struct Mem *mem)
 	return str;
 }
 
+// XXX fmt F | mem_str | tt_sprintf
 const char *
 mem_str(const struct Mem *mem)
 {
