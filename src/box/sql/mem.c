@@ -180,6 +180,7 @@ mem_snprintf(char *buf, size_t size, const struct Mem *mem)
 	return res;
 }
 
+// XXX fmt F ~ mem_strdup -- аналог TOSTR_NE но со своим аллокатором
 char *
 mem_strdup(const struct Mem *mem)
 {
@@ -190,6 +191,7 @@ mem_strdup(const struct Mem *mem)
 	return str;
 }
 
+// XXX fmt F | mem_str | tt_sprintf
 const char *
 mem_str(const struct Mem *mem)
 {

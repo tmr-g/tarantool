@@ -783,6 +783,7 @@ static const char * const gc_consumer_type_strs[] = {
 	[GC_CONSUMER_REPLICA] = "replica",
 };
 
+// XXX fmt F gc_consumer_name | tt_sprintf
 const char *
 gc_consumer_name(struct gc_consumer *consumer)
 {

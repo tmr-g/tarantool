@@ -654,7 +654,7 @@ mp_datetime_unpack_fail_test(void)
 		{.tzindex = -1},
 	};
 
-	const unsigned tap_tests_per_iter = 1;
+	const unsigned tap_tests_per_iter = 3;
 	plan(tap_tests_per_iter * lengthof(invalid_values));
 	for (size_t index = 0; index < lengthof(invalid_values); index++) {
 		TAP_TEST_LOCATION();
@@ -665,6 +665,11 @@ mp_datetime_unpack_fail_test(void)
 		memset(&date, 0, sizeof(date));
 		struct datetime *dt = datetime_unpack(&p, sizeof(value), &date);
 		is(dt, NULL, "datetime_unpack() is NULL");
+		int res;
+		res = mp_snprint_datetime(NULL, 0, &p, sizeof(value));
+		ok(res < 0, "mp_snprint_datetime() returns error: %d", res);
+		res = mp_fprint_datetime(NULL, &p, sizeof(value));
+		ok(res < 0, "mp_fprint_datetime() returns error: %d", res);
 	}
 	check_plan();
 }

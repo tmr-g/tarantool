@@ -2966,6 +2966,8 @@ applier_resume_to_state(struct applier *applier, enum applier_state state,
 	assert(applier->state == state);
 }
 
+// XXX fmt: можно применить TOSTR при текущем значении APPLIER_SOURCE_MAXLEN
+// используется для replica_str -- можно добавить, считается в коде
 const char *
 applier_uri_str(const struct applier *applier)
 {
