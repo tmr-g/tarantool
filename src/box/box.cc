@@ -372,7 +372,7 @@ title(const char *new_status)
  * Create a message describing the ro state and put it into a buffer.
  */
 static int
-box_ro_state_msg(char *buf, int size)
+box_ro_state_msg_snprint(char *buf, int size)
 {
 	int total = 0;
 	struct raft *raft = box_raft();
@@ -423,8 +423,7 @@ box_ro_state_msg(char *buf, int size)
 		else
 			unreachable();
 	}
-	(void)total;
-	return 0;
+	return total;
 }
 
 void
@@ -447,7 +446,7 @@ box_update_ro_summary(void)
 			}
 		}
 		char *buf = tt_static_buf();
-		VERIFY(box_ro_state_msg(buf, TT_STATIC_BUF_LEN) == 0);
+		VERIFY(box_ro_state_msg_snprint(buf, TT_STATIC_BUF_LEN) > 0);
 		say_info("box switched to read-only - %s", buf);
 	} else {
 		say_info("box switched to rw");
@@ -495,7 +494,7 @@ box_check_writable(void)
 	struct error *e = diag_set(ClientError, ER_READONLY);
 	struct raft *raft = box_raft();
 	char *buf = tt_static_buf();
-	VERIFY(box_ro_state_msg(buf, TT_STATIC_BUF_LEN) == 0);
+	VERIFY(box_ro_state_msg_snprint(buf, TT_STATIC_BUF_LEN) > 0);
 	error_append_msg(e, " - %s", buf);
 	error_set_str(e, "reason", box_ro_reason());
 	/*
