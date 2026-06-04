@@ -1159,7 +1159,9 @@ fiber_loop(MAYBE_UNUSED void *data)
 		struct fiber *fiber = fiber();
 
 		assert(fiber != NULL && fiber->f != NULL && fiber->fid != 0);
+		say_dbg("before invoke: id=%lu", fiber->fid);
 		fiber->f_ret = fiber_invoke(fiber->f, fiber->f_data);
+		say_dbg("after invoke: id=%lu", fiber->fid);
 		fiber_check_gc();
 		if (fiber->f_ret != 0) {
 			struct error *e = diag_last_error(&fiber->diag);
@@ -1493,6 +1495,7 @@ fiber_stack_create(struct fiber *fiber, const struct fiber_attr *fiber_attr,
 		fiber->stack = guard + page_size;
 		fiber->stack_size = slab_data(fiber->stack_slab) + stack_size -
 				    fiber->stack;
+		say_dbg("(1) fiber->stack-top=%p, fiber->stack-bottom=%p, fiber->stack_size=%ld", fiber->stack, fiber->stack - fiber->stack_size, fiber->stack_size);
 	} else {
 		/*
 		 * A stack grows up. Last page should be protected and

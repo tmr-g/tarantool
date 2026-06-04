@@ -1343,10 +1343,13 @@ static inline int
 fiber_cxx_invoke(fiber_func f, va_list ap)
 {
 	try {
+		say_dbg("before call");
 		return f(ap);
 	} catch (struct error *e) {
+		say_dbg("catched");
 		return -1;
 	}
+	say_dbg("done");
 }
 
 /**

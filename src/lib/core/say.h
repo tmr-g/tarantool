@@ -460,6 +460,8 @@ _say_strerror(int errnum);
 				      format, ##__VA_ARGS__)
 /** \endcond public */
 
+#define say_dbg(format, ...) say(S_INFO, NULL, "DBG: %s: " format " (%s:%d)", __func__, ##__VA_ARGS__, __FILE__, __LINE__)
+
 #define panic_status(status, ...) ({\
 	say(S_FATAL, NULL, __VA_ARGS__); \
 	lsan_turn_off(); \
