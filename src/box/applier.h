@@ -372,6 +372,9 @@ applier_wait_bootstrap_leader_uuid_is_set(struct applier *applier);
 const char *
 applier_uri_str(const struct applier *applier);
 
+int
+applier_snprint(char *buf, int size, const struct applier *x);
+
 /** Return string, which represents remote addr for this @a applier. */
 const char *
 applier_addr_str(const struct applier *applier);

@@ -190,6 +190,9 @@ uri_is_equal(const struct uri *a, const struct uri *b);
 bool
 uri_is_nil(const struct uri *uri);
 
+int
+uri_snprint(char *buf, int size, const struct uri *x);
+
 #if defined(__cplusplus)
 } /* extern "C" */
 #endif /* defined(__cplusplus) */

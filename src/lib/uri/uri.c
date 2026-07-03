@@ -565,3 +565,15 @@ uri_is_nil(const struct uri *uri)
 	 */
 	return uri->host == NULL && uri->path == NULL && uri->service == NULL;
 }
+
+int
+uri_snprint(char *buf, int size, const struct uri *x)
+{
+	if (x == NULL)
+		return snprintf(buf, size, "uri(null)");
+	int total = 0;
+	SNPRINT(total, snprintf, buf, size, "uri(");
+	SNPRINT(total, uri_format, buf, size, x, true);
+	SNPRINT(total, snprintf, buf, size, ")");
+	return total;
+}

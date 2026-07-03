@@ -505,6 +505,9 @@ enum {
 	REPLICA_ID_NIL = 0,
 };
 
+int
+replica_snprint(char *buf, int size, const struct replica *x);
+
 /**
  * Find a replica by UUID
  */

@@ -554,7 +554,8 @@ local modify_cfg = {
 local function purge_sensitive_data_from_uri(uri)
     local parsed = urilib.parse(uri)
     if parsed ~= nil then
-        return urilib.format(parsed, false)
+        -- return urilib.format(parsed, false)
+        return urilib.format(parsed, true)
     end
     return uri
 end

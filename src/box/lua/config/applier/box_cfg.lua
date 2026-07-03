@@ -99,6 +99,7 @@ local function set_listen(configdata, box_cfg)
         end
 
         box_cfg.listen = listen
+        log.info('DEBUG: listen: %s', require('json').encode(box_cfg.listen))
     end
 end
 
@@ -106,6 +107,7 @@ local function set_replication_peers(configdata, box_cfg)
     -- Construct box_cfg.replication.
     if box_cfg.replication == nil then
         box_cfg.replication = peer_uris(configdata)
+        log.info('DEBUG: replication: %s', require('json').encode(box_cfg.replication))
     end
 end
 

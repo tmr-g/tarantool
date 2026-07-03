@@ -100,6 +100,7 @@ lbox_push_replication_error_message(struct lua_State *L, struct error *e,
 static void
 lbox_pushapplier(lua_State *L, struct applier *applier)
 {
+	say_dbg("box.info.replication push %s", TOSTR(applier_snprint, applier));
 	lua_newtable(L);
 	/* Get applier state in lower case */
 	static char status[16];
@@ -127,6 +128,7 @@ lbox_pushapplier(lua_State *L, struct applier *applier)
 			write_sensitive = true;
 		});
 		char name[APPLIER_SOURCE_MAXLEN];
+		write_sensitive = true;
 		int total = uri_format(name, sizeof(name),
 				       &applier->uri, write_sensitive);
 		/*
@@ -135,6 +137,8 @@ lbox_pushapplier(lua_State *L, struct applier *applier)
 		 * zero is ignored by lua_pushlstring.
 		 */
 		total = MIN(total, (int)sizeof(name) - 1);
+		int t2 = snprintf(name + total, sizeof(name) - total, "&fd=%d", applier->io.fd);
+		total = MIN(total + t2, (int)sizeof(name) - 1);
 		lua_pushstring(L, "peer");
 		lua_pushlstring(L, name, total);
 		lua_settable(L, -3);
@@ -183,6 +187,7 @@ lbox_pushrelay(lua_State *L, struct relay *relay)
 static void
 lbox_pushreplica(lua_State *L, struct replica *replica)
 {
+	say_dbg("box.info.replication push %s", TOSTR(replica_snprint, replica));
 	struct applier *applier = replica->applier;
 	struct relay *relay = replica->relay;
 
@@ -223,6 +228,7 @@ lbox_pushreplica(lua_State *L, struct replica *replica)
 static int
 lbox_info_replication(struct lua_State *L)
 {
+	say_dbg("box.info.replication BEGIN");
 	lua_newtable(L); /* box.info.replication */
 
 	/* Nice formatting */
@@ -240,6 +246,7 @@ lbox_info_replication(struct lua_State *L)
 
 		lua_rawseti(L, -2, replica->id);
 	}
+	say_dbg("box.info.replication END");
 
 	return 1;
 }
