@@ -48,6 +48,7 @@ local OPENSSL_3_0_0_OR_NEWER = (OPENSSL_VERSION_NUMBER >=
 package.path = ('%s/?.lua'):format(debug.__dir__)..';'..package.path
 local utils = require('ssl_test_utils')
 
+-- {{{ test_invalid_cfg
 g.before_test('test_invalid_cfg', function()
     g.server = server:new({alias = 'master'})
     g.server:start()
@@ -201,7 +202,9 @@ g.test_invalid_cfg = function()
         end
     end, {g.server.net_box_uri, TEST_CASES, LISTEN_TEST_CASES})
 end
+-- }}} test_invalid_cfg
 
+-- {{{ test_net_box
 g.before_test('test_net_box', function()
     g.server = server:new({alias = 'master'})
     g.server:start()
@@ -335,7 +338,9 @@ g.test_net_box = function()
     t.assert_equals(c:eval('return true'), true)
     c:close()
 end
+-- }}} test_net_box
 
+-- {{{ test_client_disconnect
 g.before_test('test_client_disconnect', function()
     t.skip_if(not OPENSSL_3_0_0_OR_NEWER)
     g.server = server:new({alias = 'master'})
@@ -366,7 +371,9 @@ g.test_client_disconnect = function()
     g.server:stop()
     t.assert_equals(g.server:grep_log('E>.*unexpected eof while reading'), nil)
 end
+-- }}} test_client_disconnect
 
+-- {{{ test_replication
 g.before_test('test_replication', function()
     g.cluster = cluster:new({})
     g.master = g.cluster:build_and_add_server({alias = 'master'})
@@ -533,7 +540,9 @@ g.test_replication = function()
     end, {g.master.net_box_uri, CLIENT_CERT_FILE, CLIENT_KEY_FILE,
         CLIENT2_CERT_FILE, CLIENT2_KEY_FILE})
 end
+-- }}} test_replication
 
+-- {{{ test_replication_reconnect_after_enabling_ssl
 g.before_test('test_replication_reconnect_after_enabling_ssl', function()
     g.cluster = cluster:new({})
     g.master = g.cluster:build_and_add_server({alias = 'master'})
@@ -596,7 +605,9 @@ g.test_replication_reconnect_after_enabling_ssl = function()
         end)
     end)
 end
+-- }}} test_replication_reconnect_after_enabling_ssl
 
+-- {{{ test_replication_reconnect_after_disabling_ssl
 g.before_test('test_replication_reconnect_after_disabling_ssl', function()
     g.cluster = cluster:new({})
     g.master = g.cluster:build_and_add_server({alias = 'master'})
@@ -671,7 +682,9 @@ g.test_replication_reconnect_after_disabling_ssl = function()
         end)
     end)
 end
+-- }}} test_replication_reconnect_after_disabling_ssl
 
+-- {{{ test_ciphers
 g.before_test('test_ciphers', function()
     g.server = server:new({alias = 'master'})
     g.server:start()
@@ -721,7 +734,9 @@ g.test_ciphers = function()
     t.assert_equals(c:eval('return true'), true)
     c:close()
 end
+-- }}} test_ciphers
 
+-- {{{ test_passwd
 g.before_test('test_passwd', function()
     g.passwd_path = fio.pathjoin(VARDIR, 'passwd.txt')
     g.server = server:new({alias = 'master'})
@@ -856,7 +871,9 @@ g.test_passwd = function()
 
     passwd_file:close()
 end
+-- }}} test_passwd
 
+-- {{{ test_gost
 g.before_test('test_gost', function()
     g.server = server:new({alias = 'master'})
     g.server:start()
@@ -894,7 +911,9 @@ g.test_gost = function()
     t.assert_equals(c:eval('return true'), true)
     c:close()
 end
+-- }}} test_gost
 
+-- {{{ test_reload_listen
 g.before_test('test_reload_listen', function()
     t.assert(fio.copyfile(SERVER_CERT_FILE, TMP_CERT_FILE))
     t.assert(fio.copyfile(SERVER_KEY_FILE, TMP_KEY_FILE))
@@ -954,7 +973,9 @@ g.test_reload_listen = function()
     t.assert_equals(c:eval('return true'), true)
     c:close()
 end
+-- }}} test_reload_listen
 
+-- {{{ test_reload_replication
 g.before_test('test_reload_replication', function()
     t.assert(fio.copyfile(CLIENT_CERT_FILE, TMP_CERT_FILE))
     t.assert(fio.copyfile(CLIENT_KEY_FILE, TMP_KEY_FILE))
@@ -1070,7 +1091,9 @@ g.test_reload_replication = function()
         end)
     end)
 end
+-- }}} test_reload_replication
 
+-- {{{ test_console
 g.before_test('test_console', function(cg)
     cg.server = server:new()
     cg.server:start()
@@ -1103,7 +1126,9 @@ g.test_console = function(cg)
     t.assert_equals(client:read_response(), true)
     client:close()
 end
+-- }}} test_console
 
+-- {{{ test no sensitive data in URI, etc.
 local function assert_no_sensitive_ssl_data_in_cfg_option(server, option,
                                                           sensitive_data)
     local set_option_log = server:grep_log(
@@ -1268,3 +1293,4 @@ g_repl.test_no_sensitive_ssl_data_in_applier_fiber_name = function()
         t.assert_not(SENSITIVE_SSL_DATA[key])
     end
 end
+-- }}} test no sensitive data in URI, etc.
